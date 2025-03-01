@@ -1,34 +1,16 @@
-from datetime import datetime
-
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm, ProfileEditForm
 from .models import Category, Comment, Post, User
-
-
-def get_posts(post_objects):
-    """Получение постов из базы данных."""
-    return post_objects.filter(
-        is_published=True,
-        category__is_published=True,
-        pub_date__lte=datetime.now()
-    ).annotate(comment_count=Count('comments'))
-
-
-def get_paginator(request, items, num=10):
-    """Получение объекта пагинации."""
-    paginator = Paginator(items, num)
-    num_pages = request.GET.get('page')
-    return paginator.get_page(num_pages)
+from .service import get_paginator, get_posts
 
 
 def index(request):
     """Главная страница."""
     template = 'blog/index.html'
-    post_list = get_posts(Post.objects).order_by('-pub_date')
+    post_list = get_posts(Post.objects)
     page_obj = get_paginator(request, post_list)
     context = {'page_obj': page_obj}
     return render(request, template, context)
@@ -39,7 +21,10 @@ def post_detail(request, post_id):
     template = 'blog/detail.html'
     posts = get_object_or_404(Post, id=post_id)
     if request.user != posts.author:
-        posts = get_object_or_404(get_posts(Post.objects), id=post_id)
+        posts = get_object_or_404(
+            get_posts(Post.objects, is_count_comments=False),
+            id=post_id
+        )
     comments = posts.comments.order_by('created_at')
     form = CommentForm()
     context = {'post': posts, 'form': form, 'comments': comments}
@@ -54,7 +39,7 @@ def category_posts(request, category_slug):
         slug=category_slug,
         is_published=True
     )
-    post_list = get_posts(category.posts).order_by('-pub_date')
+    post_list = get_posts(category.posts)
     page_obj = get_paginator(request, post_list)
     context = {'category': category, 'page_obj': page_obj}
     return render(request, template, context)
@@ -64,15 +49,12 @@ def category_posts(request, category_slug):
 def create_post(request):
     """Создание поста."""
     template = 'blog/create.html'
-    if request.method == 'POST':
-        form = PostForm(request.POST or None, files=request.FILES or None)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.save()
-            return redirect('blog:profile', request.user)
-    else:
-        form = PostForm()
+    form = PostForm(request.POST or None, files=request.FILES or None)
+    if form.is_valid():
+        post = form.save(commit=False)
+        post.author = request.user
+        post.save()
+        return redirect('blog:profile', request.user)
     context = {'form': form}
     return render(request, template, context)
 
@@ -115,7 +97,8 @@ def edit_post(request, post_id):
         return redirect('blog:post_detail', post_id)
     if request.method == "POST":
         form = PostForm(
-            request.POST, files=request.FILES or None, instance=post)
+            request.POST or None, files=request.FILES or None, instance=post
+        )
         if form.is_valid():
             post.save()
             return redirect('blog:post_detail', post_id)

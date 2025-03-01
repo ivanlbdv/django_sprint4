@@ -1,7 +1,8 @@
-from blog.constants import MAX_LENGTH
 from core.models import BaseModel
 from django.contrib.auth import get_user_model
 from django.db import models
+
+from .constants import MAX_LENGTH
 
 User = get_user_model()
 

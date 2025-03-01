@@ -1,1 +1,2 @@
 MAX_LENGTH: int = 256
+POSTS_PER_PAGE: int = 10
