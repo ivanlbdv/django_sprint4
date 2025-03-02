@@ -95,15 +95,12 @@ def edit_post(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     if request.user != post.author:
         return redirect('blog:post_detail', post_id)
-    if request.method == "POST":
-        form = PostForm(
-            request.POST or None, files=request.FILES or None, instance=post
-        )
-        if form.is_valid():
-            post.save()
-            return redirect('blog:post_detail', post_id)
-    else:
-        form = PostForm(instance=post)
+    form = PostForm(
+        request.POST or None, files=request.FILES or None, instance=post
+    )
+    if form.is_valid():
+        post.save()
+        return redirect('blog:post_detail', post_id)
     context = {'form': form}
     return render(request, template, context)
 
@@ -145,13 +142,10 @@ def edit_comment(request, post_id, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.user != comment.author:
         return redirect('blog:post_detail', post_id)
-    if request.method == "POST":
-        form = CommentForm(request.POST or None, instance=comment)
-        if form.is_valid():
-            form.save()
-            return redirect('blog:post_detail', post_id)
-    else:
-        form = CommentForm(instance=comment)
+    form = CommentForm(request.POST or None, instance=comment)
+    if form.is_valid():
+        form.save()
+        return redirect('blog:post_detail', post_id)
     context = {'form': form, 'comment': comment}
     return render(request, template, context)
 
@@ -163,7 +157,7 @@ def delete_comment(request, post_id, comment_id):
     comment = get_object_or_404(Comment, id=comment_id)
     if request.user != comment.author:
         return redirect('blog:post_detail', post_id)
-    if request.method == "POST":
+    if request.method == 'POST':
         comment.delete()
         return redirect('blog:post_detail', post_id)
     context = {'comment': comment}
